@@ -43,6 +43,7 @@
                         <a href="/" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
                         <a href="/assets" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Assets</a>
                         <a href="/repairs" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Repairs</a>
+                        <a href="/admin/users" id="admin-users-link" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium hidden">Users</a>
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
@@ -57,9 +58,6 @@
                     <div id="auth-buttons" class="flex space-x-2">
                         <a href="/login" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm font-medium">
                             Login
-                        </a>
-                        <a href="/register" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-sm font-medium">
-                            Register
                         </a>
                     </div>
                 </div>
@@ -86,6 +84,28 @@
 
     <!-- Scripts -->
     <script src="/static/js/main.js"></script>
+    <script>
+        // Show/hide admin navigation based on user role
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem('access_token');
+            if (token) {
+                fetch('/auth/me', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                })
+                .then(response => response.json())
+                .then(user => {
+                    if (user.role === 'ADMIN') {
+                        document.getElementById('admin-users-link').classList.remove('hidden');
+                    }
+                })
+                .catch(error => {
+                    console.log('Error checking user role:', error);
+                });
+            }
+        });
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

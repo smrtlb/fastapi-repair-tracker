@@ -77,48 +77,6 @@ async def startup_event():
     init_database()
 
 # Authentication endpoints
-@app.post("/auth/register", response_model=UserResponse)
-async def register(user: UserCreate):
-    """Register a new user"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    try:
-        # Check if user already exists
-        cursor.execute("SELECT id FROM users WHERE email = ?", (user.email,))
-        if cursor.fetchone():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
-            )
-        
-        # Create new user
-        password_hash = get_password_hash(user.password)
-        cursor.execute(
-            "INSERT INTO users (email, name, password_hash) VALUES (?, ?, ?)",
-            (user.email, user.name, password_hash)
-        )
-        conn.commit()
-        
-        # Get created user
-        user_id = cursor.lastrowid
-        cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
-        user_row = cursor.fetchone()
-        
-        return UserResponse(
-            id=user_row["id"],
-            email=user_row["email"],
-            name=user_row["name"],
-            role=user_row["role"],
-            created_at=datetime.fromisoformat(user_row["created_at"]),
-            updated_at=datetime.fromisoformat(user_row["updated_at"])
-        )
-    except Exception as e:
-        conn.rollback()
-        logger.error(f"Registration error: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Registration failed")
-    finally:
-        conn.close()
 
 @app.post("/auth/login", response_model=Token)
 async def login(user_credentials: UserLogin):
@@ -1276,6 +1234,52 @@ async def update_user_settings(
         conn.close()
 
 # Admin endpoints
+@app.post("/api/admin/users", response_model=UserResponse)
+async def create_user(
+    user: UserCreate, 
+    current_user: UserResponse = Depends(get_current_admin_user)
+):
+    """Create a new user (admin only)"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Check if user already exists
+        cursor.execute("SELECT id FROM users WHERE email = ?", (user.email,))
+        if cursor.fetchone():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+        
+        # Create new user
+        password_hash = get_password_hash(user.password)
+        cursor.execute(
+            "INSERT INTO users (email, name, password_hash, role) VALUES (?, ?, ?, ?)",
+            (user.email, user.name, password_hash, user.role.value)
+        )
+        conn.commit()
+        
+        # Get created user
+        user_id = cursor.lastrowid
+        cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+        user_row = cursor.fetchone()
+        
+        return UserResponse(
+            id=user_row["id"],
+            email=user_row["email"],
+            name=user_row["name"],
+            role=user_row["role"],
+            created_at=datetime.fromisoformat(user_row["created_at"]),
+            updated_at=datetime.fromisoformat(user_row["updated_at"])
+        )
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"User creation error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="User creation failed")
+    finally:
+        conn.close()
+
 @app.get("/api/admin/users", response_model=List[UserResponse])
 async def get_users(current_user: UserResponse = Depends(get_current_admin_user)):
     """Get all users (admin only)"""
@@ -1300,6 +1304,45 @@ async def get_users(current_user: UserResponse = Depends(get_current_admin_user)
     finally:
         conn.close()
 
+@app.delete("/api/admin/users/{user_id}")
+async def delete_user(
+    user_id: int,
+    current_user: UserResponse = Depends(get_current_admin_user)
+):
+    """Delete a user (admin only)"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Check if user exists
+        cursor.execute("SELECT id FROM users WHERE id = ?", (user_id,))
+        if not cursor.fetchone():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        # Prevent admin from deleting themselves
+        if user_id == current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot delete your own account"
+            )
+        
+        # Delete user
+        cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        conn.commit()
+        
+        return {"message": "User deleted successfully"}
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Error deleting user: {e}")
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to delete user")
+    finally:
+        conn.close()
+
 # Web interface routes
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
@@ -1311,10 +1354,11 @@ async def login_page(request: Request):
     """Login page"""
     return templates.TemplateResponse("login.html", {"request": request})
 
-@app.get("/register", response_class=HTMLResponse)
-async def register_page(request: Request):
-    """Register page"""
-    return templates.TemplateResponse("register.html", {"request": request})
+@app.get("/admin/users", response_class=HTMLResponse)
+async def admin_users_page(request: Request):
+    """Admin users management page"""
+    return templates.TemplateResponse("admin/users.html", {"request": request})
+
 
 @app.get("/assets", response_class=HTMLResponse)
 async def assets_page(request: Request):
