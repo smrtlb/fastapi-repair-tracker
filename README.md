@@ -218,19 +218,20 @@ Office Building;2024-02-10;Heating maintenance;Mike Johnson;Annual service;150.5
 
 ## 👥 Авторы
 
-- **Ваше имя** - *Начальная работа* - [yourusername](https://github.com/yourusername)
+- Dan - [smrtlb](https://github.com/smrtlb)
 
 ## 🙏 Благодарности
 
 - FastAPI за отличный фреймворк
 - Tailwind CSS за красивые стили
 - SQLite за простую базу данных
+- Cursor за создание приложения
 
 ## 📞 Поддержка
 
 Если у вас есть вопросы или проблемы:
-- Создайте [Issue](https://github.com/yourusername/fastapi-repair-tracker/issues)
-- Напишите на email: your.email@example.com
+- Создайте [Issue](https://github.com/smrtlb/fastapi-repair-tracker/issues)
+- Напишите на email: dev@smartlab.fi
 
 ---
 
