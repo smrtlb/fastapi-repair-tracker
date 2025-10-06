@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Repair - Repair Tracker{% endblock %}
+
+{% block breadcrumbs %}
+<nav class="bg-gray-800 px-4 py-3">
+    <div class="max-w-7xl mx-auto">
+        <ol class="flex items-center space-x-2 text-sm">
+            <li><a href="/" class="text-blue-400 hover:text-blue-300">Dashboard</a></li>
+            <li class="text-gray-500">/</li>
+            <li><a href="/repairs" class="text-blue-400 hover:text-blue-300">Repairs</a></li>
+            <li class="text-gray-500">/</li>
+            <li class="text-white">Edit Repair</li>
+        </ol>
+    </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="px-4 py-6 sm:px-0">
+    <div class="max-w-2xl mx-auto">
+        <div id="loading" class="text-center text-gray-400">
+            Loading repair details...
+        </div>
+        
+        <div id="repair-form-container" class="hidden">
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h1 class="text-2xl font-bold text-white mb-6">Edit Repair</h1>
+                
+                <form id="repair-form" class="space-y-6">
+                    <div>
+                        <label for="property_id" class="block text-sm font-medium text-gray-300 mb-2">
+                            Asset *
+                        </label>
+                        <select id="property_id" name="property_id" required
+                                class="w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">Select asset</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="date" class="block text-sm font-medium text-gray-300 mb-2">
+                            Date *
+                        </label>
+                        <input type="date" id="date" name="date" required
+                               class="w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label for="description" class="block text-sm font-medium text-gray-300 mb-2">
+                            Description *
+                        </label>
+                        <textarea id="description" name="description" required rows="3"
+                                  class="w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  placeholder="Describe the repair work"></textarea>
+                    </div>
+                    
+                    <div>
+                        <label for="performed_by" class="block text-sm font-medium text-gray-300 mb-2">
+                            Performed By *
+                        </label>
+                        <input type="text" id="performed_by" name="performed_by" required
+                               class="w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="Who performed the repair">
+                    </div>
+                    
+                    <div>
+                        <label for="notes" class="block text-sm font-medium text-gray-300 mb-2">
+                            Notes
+                        </label>
+                        <textarea id="notes" name="notes" rows="2"
+                                  class="w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  placeholder="Additional notes (optional)"></textarea>
+                    </div>
+                    
+                    <div>
+                        <label for="cost_cents" class="block text-sm font-medium text-gray-300 mb-2">
+                            Cost (<span id="currency-symbol">$</span>)
+                        </label>
+                        <input type="number" id="cost_cents" name="cost_cents" min="0" step="0.01"
+                               class="w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="0.00">
+                    </div>
+                    
+                    <div>
+                        <label for="status" class="block text-sm font-medium text-gray-300 mb-2">
+                            Status *
+                        </label>
+                        <select id="status" name="status" required
+                                class="w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="COMPLETED">Completed</option>
+                            <option value="PLANNED">Planned</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3">
+                        <a href="/repairs" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md">
+                            Cancel
+                        </a>
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">
+                            Update Repair
+                        </button>
+                    </div>
+                </form>
+                
+                <div id="error-message" class="hidden mt-4 bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded">
+                    <span id="error-text"></span>
+                </div>
+            </div>
+        </div>
+        
+        <div id="not-found" class="hidden text-center py-12">
+            <div class="text-gray-400 text-lg mb-4">Repair not found</div>
+            <a href="/repairs" class="text-blue-400 hover:text-blue-300">← Back to Repairs</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const repairId = {{ repair_id }};
+let currentRepair = null;
+let currentAssets = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    checkAuth();
+    loadAssets();
+    loadRepairDetails();
+    
+    // Update currency symbol when settings are loaded
+    updateCurrencySymbol();
+    
+    document.getElementById('repair-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const propertyId = parseInt(document.getElementById('property_id').value);
+        const date = document.getElementById('date').value;
+        const description = document.getElementById('description').value.trim();
+        const performedBy = document.getElementById('performed_by').value.trim();
+        const notes = document.getElementById('notes').value.trim();
+        const costDollars = parseFloat(document.getElementById('cost_cents').value) || 0;
+        // Convert from user's currency to USD cents
+        const costCents = convertCurrency ? convertCurrency(Math.round(costDollars * 100), userSettings?.currency || 'USD', 'USD') : Math.round(costDollars * 100);
+        const status = document.getElementById('status').value;
+        
+        console.log('Form data:', {
+            propertyId, date, description, performedBy, notes, costDollars, status
+        });
+        const errorDiv = document.getElementById('error-message');
+        const errorText = document.getElementById('error-text');
+        
+        if (!propertyId || !date || !description || !performedBy) {
+            errorText.textContent = 'Please fill in all required fields';
+            errorDiv.classList.remove('hidden');
+            return;
+        }
+        
+        const token = localStorage.getItem('access_token');
+        
+        try {
+            const updateData = {
+                property_id: propertyId,
+                date: date,
+                description: description,
+                performed_by: performedBy,
+                cost_cents: costCents,
+                status: status
+            };
+            
+            // Only add notes if it has content
+            if (notes && notes.trim()) {
+                updateData.notes = notes;
+            }
+            
+            const response = await fetch(`/api/repairs/${repairId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(updateData)
+            });
+            
+            if (response.ok) {
+                window.location.href = '/repairs';
+            } else {
+                const error = await response.json();
+                console.error('Repair update error:', error);
+                console.error('Error details:', error.detail);
+                console.error('Error details array:', JSON.stringify(error.detail, null, 2));
+                console.error('Sent data:', updateData);
+                
+                // Show detailed error message
+                let errorMessage = 'Failed to update repair';
+                if (Array.isArray(error.detail)) {
+                    errorMessage = error.detail.map(err => {
+                        console.error('Individual error:', err);
+                        return err.msg || err.loc?.join('.') + ': ' + err.msg || JSON.stringify(err);
+                    }).join(', ');
+                } else if (error.detail) {
+                    errorMessage = error.detail;
+                }
+                
+                errorText.textContent = errorMessage;
+                errorDiv.classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('Error updating repair:', error);
+            errorText.textContent = 'Network error. Please try again.';
+            errorDiv.classList.remove('hidden');
+        }
+    });
+});
+
+async function checkAuth() {
+    const token = localStorage.getItem('access_token');
+    
+    if (!token) {
+        window.location.href = '/login';
+        return;
+    }
+    
+    try {
+        const response = await fetch('/auth/me', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            const user = await response.json();
+            document.getElementById('user-name').textContent = user.name || user.email;
+            document.getElementById('user-info').classList.remove('hidden');
+            document.getElementById('auth-buttons').classList.add('hidden');
+        }
+    } catch (error) {
+        console.error('Error loading user info:', error);
+    }
+}
+
+async function loadAssets() {
+    const token = localStorage.getItem('access_token');
+    
+    try {
+        const response = await fetch('/api/assets', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            currentAssets = await response.json();
+            populateAssetSelect();
+        }
+    } catch (error) {
+        console.error('Error loading assets:', error);
+    }
+}
+
+function populateAssetSelect() {
+    const select = document.getElementById('property_id');
+    select.innerHTML = '<option value="">Select asset</option>';
+    
+    currentAssets.forEach(asset => {
+        const option = document.createElement('option');
+        option.value = asset.id;
+        option.textContent = `${asset.name} (${asset.type})`;
+        select.appendChild(option);
+    });
+}
+
+async function loadRepairDetails() {
+    const token = localStorage.getItem('access_token');
+    
+    try {
+        const response = await fetch(`/api/repairs/${repairId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            currentRepair = await response.json();
+            populateForm();
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('repair-form-container').classList.remove('hidden');
+        } else if (response.status === 404) {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('not-found').classList.remove('hidden');
+        } else if (response.status === 401) {
+            window.location.href = '/login';
+        }
+    } catch (error) {
+        console.error('Error loading repair details:', error);
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('not-found').classList.remove('hidden');
+    }
+}
+
+function populateForm() {
+    if (!currentRepair) return;
+    
+    document.getElementById('property_id').value = currentRepair.property_id;
+    document.getElementById('date').value = currentRepair.date;
+    document.getElementById('description').value = currentRepair.description;
+    document.getElementById('performed_by').value = currentRepair.performed_by;
+    document.getElementById('notes').value = currentRepair.notes || '';
+    // Convert cost from USD to user's currency
+    const convertedCost = convertCurrency ? convertCurrency(currentRepair.cost_cents, 'USD', userSettings?.currency || 'USD') : currentRepair.cost_cents;
+    document.getElementById('cost_cents').value = (convertedCost / 100).toFixed(2);
+    document.getElementById('status').value = currentRepair.status;
+}
+
+function updateCurrencySymbol() {
+    if (typeof getCurrencySymbol === 'function') {
+        const symbol = getCurrencySymbol();
+        const currencyElement = document.getElementById('currency-symbol');
+        if (currencyElement) {
+            currencyElement.textContent = symbol;
+        }
+    }
+}
+</script>
+{% endblock %}
+

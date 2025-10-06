@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Asset - Repair Tracker{% endblock %}
+
+{% block breadcrumbs %}
+<nav class="bg-gray-800 px-4 py-3">
+    <div class="max-w-7xl mx-auto">
+        <ol class="flex items-center space-x-2 text-sm">
+            <li><a href="/" class="text-blue-400 hover:text-blue-300">Dashboard</a></li>
+            <li class="text-gray-500">/</li>
+            <li><a href="/assets" class="text-blue-400 hover:text-blue-300">Assets</a></li>
+            <li class="text-gray-500">/</li>
+            <li><a href="/assets/{{ asset_id }}" class="text-blue-400 hover:text-blue-300" id="breadcrumb-asset-name">Asset</a></li>
+            <li class="text-gray-500">/</li>
+            <li class="text-white">Edit</li>
+        </ol>
+    </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="px-4 py-6 sm:px-0">
+    <div class="max-w-2xl mx-auto">
+        <div id="loading" class="text-center text-gray-400">
+            Loading asset details...
+        </div>
+        
+        <div id="asset-form-container" class="hidden">
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h1 class="text-2xl font-bold text-white mb-6">Edit Asset</h1>
+                
+                <form id="asset-form" class="space-y-6">
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-gray-300 mb-2">
+                            Asset Name *
+                        </label>
+                        <input type="text" id="name" name="name" required
+                               class="w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="Enter asset name">
+                    </div>
+                    
+                    <div>
+                        <label for="type" class="block text-sm font-medium text-gray-300 mb-2">
+                            Asset Type *
+                        </label>
+                        <select id="type" name="type" required
+                                class="w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">Select asset type</option>
+                            <option value="house">House</option>
+                            <option value="apartment">Apartment</option>
+                            <option value="garage">Garage</option>
+                            <option value="warehouse">Warehouse</option>
+                            <option value="car">Car</option>
+                            <option value="motorcycle">Motorcycle</option>
+                            <option value="bicycle">Bicycle</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3">
+                        <a href="/assets/{{ asset_id }}" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md">
+                            Cancel
+                        </a>
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">
+                            Update Asset
+                        </button>
+                    </div>
+                </form>
+                
+                <div id="error-message" class="hidden mt-4 bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded">
+                    <span id="error-text"></span>
+                </div>
+            </div>
+        </div>
+        
+        <div id="not-found" class="hidden text-center py-12">
+            <div class="text-gray-400 text-lg mb-4">Asset not found</div>
+            <a href="/assets" class="text-blue-400 hover:text-blue-300">← Back to Assets</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const assetId = {{ asset_id }};
+let currentAsset = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    checkAuth();
+    loadAssetDetails();
+    
+    document.getElementById('asset-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const name = document.getElementById('name').value.trim();
+        const type = document.getElementById('type').value;
+        const errorDiv = document.getElementById('error-message');
+        const errorText = document.getElementById('error-text');
+        
+        if (!name || !type) {
+            errorText.textContent = 'Please fill in all required fields';
+            errorDiv.classList.remove('hidden');
+            return;
+        }
+        
+        const token = localStorage.getItem('access_token');
+        
+        try {
+            const response = await fetch(`/api/assets/${assetId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ name, type })
+            });
+            
+            if (response.ok) {
+                window.location.href = `/assets/${assetId}`;
+            } else {
+                const error = await response.json();
+                errorText.textContent = error.detail || 'Failed to update asset';
+                errorDiv.classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('Error updating asset:', error);
+            errorText.textContent = 'Network error. Please try again.';
+            errorDiv.classList.remove('hidden');
+        }
+    });
+});
+
+async function checkAuth() {
+    const token = localStorage.getItem('access_token');
+    
+    if (!token) {
+        window.location.href = '/login';
+        return;
+    }
+    
+    try {
+        const response = await fetch('/auth/me', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            const user = await response.json();
+            document.getElementById('user-name').textContent = user.name || user.email;
+            document.getElementById('user-info').classList.remove('hidden');
+            document.getElementById('auth-buttons').classList.add('hidden');
+        }
+    } catch (error) {
+        console.error('Error loading user info:', error);
+    }
+}
+
+async function loadAssetDetails() {
+    const token = localStorage.getItem('access_token');
+    
+    try {
+        const response = await fetch(`/api/assets/${assetId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            currentAsset = await response.json();
+            populateForm();
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('asset-form-container').classList.remove('hidden');
+        } else if (response.status === 404) {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('not-found').classList.remove('hidden');
+        } else if (response.status === 401) {
+            window.location.href = '/login';
+        }
+    } catch (error) {
+        console.error('Error loading asset details:', error);
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('not-found').classList.remove('hidden');
+    }
+}
+
+function populateForm() {
+    if (!currentAsset) return;
+    
+    document.getElementById('name').value = currentAsset.name;
+    document.getElementById('type').value = currentAsset.type;
+    document.getElementById('breadcrumb-asset-name').textContent = currentAsset.name;
+}
+</script>
+{% endblock %}
+
