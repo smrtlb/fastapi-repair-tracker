@@ -155,6 +155,9 @@ repair_tracker.db
 test_*.py
 debug_*.py
 
+# Development files
+fastapi-repair-tracker-prompt.md
+
 # Logs
 *.log
 logs/
