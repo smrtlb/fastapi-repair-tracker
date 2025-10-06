@@ -5,10 +5,15 @@ import sqlite3
 from datetime import datetime
 from typing import Optional
 import logging
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-DATABASE_URL = "repair_tracker.db"
+DATABASE_URL = os.getenv("DATABASE_URL", "repair_tracker.db")
 
 def get_db_connection():
     """Get database connection"""
