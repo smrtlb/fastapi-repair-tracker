@@ -129,8 +129,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const performedBy = document.getElementById('performed_by').value.trim();
         const notes = document.getElementById('notes').value.trim();
         const costDollars = parseFloat(document.getElementById('cost_cents').value) || 0;
-        // Convert from user's currency to USD cents
-        const costCents = convertCurrency ? convertCurrency(Math.round(costDollars * 100), userSettings?.currency || 'USD', 'USD') : Math.round(costDollars * 100);
+        // No currency conversion - save the entered value as is
+        const costCents = Math.round(costDollars * 100);
         const status = document.getElementById('status').value;
         const errorDiv = document.getElementById('error-message');
         const errorText = document.getElementById('error-text');

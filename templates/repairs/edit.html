@@ -140,8 +140,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const performedBy = document.getElementById('performed_by').value.trim();
         const notes = document.getElementById('notes').value.trim();
         const costDollars = parseFloat(document.getElementById('cost_cents').value) || 0;
-        // Convert from user's currency to USD cents
-        const costCents = convertCurrency ? convertCurrency(Math.round(costDollars * 100), userSettings?.currency || 'USD', 'USD') : Math.round(costDollars * 100);
+        // No currency conversion - save the entered value as is
+        const costCents = Math.round(costDollars * 100);
         const status = document.getElementById('status').value;
         
         console.log('Form data:', {
@@ -306,9 +306,8 @@ function populateForm() {
     document.getElementById('description').value = currentRepair.description;
     document.getElementById('performed_by').value = currentRepair.performed_by;
     document.getElementById('notes').value = currentRepair.notes || '';
-    // Convert cost from USD to user's currency
-    const convertedCost = convertCurrency ? convertCurrency(currentRepair.cost_cents, 'USD', userSettings?.currency || 'USD') : currentRepair.cost_cents;
-    document.getElementById('cost_cents').value = (convertedCost / 100).toFixed(2);
+    // No currency conversion - show the stored value as is
+    document.getElementById('cost_cents').value = (currentRepair.cost_cents / 100).toFixed(2);
     document.getElementById('status').value = currentRepair.status;
 }
 

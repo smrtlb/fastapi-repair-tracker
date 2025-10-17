@@ -470,21 +470,9 @@ function formatRepairCost(amountCents) {
         'JPY': '¥'
     };
     
-    const CURRENCY_RATES = {
-        'USD': 1.0,
-        'EUR': 0.85,
-        'RUB': 75.0,
-        'GBP': 0.73,
-        'JPY': 110.0
-    };
-    
-    // Convert from USD to user's currency
-    const fromRate = CURRENCY_RATES['USD'] || 1.0;
-    const toRate = CURRENCY_RATES[currency] || 1.0;
-    const convertedAmount = (amountCents / fromRate) * toRate;
-    
+    // No currency conversion - just show the symbol
     const symbol = CURRENCY_SYMBOLS[currency] || '$';
-    const amount = (convertedAmount / 100).toFixed(2);
+    const amount = (amountCents / 100).toFixed(2);
     
     return `${symbol}${amount}`;
 }

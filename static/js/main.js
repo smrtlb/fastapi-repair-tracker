@@ -5,14 +5,6 @@ let currentUser = null;
 let authToken = null;
 let userSettings = null;
 
-// Currency conversion rates (simplified - in real app would be from API)
-const CURRENCY_RATES = {
-    'USD': 1.0,
-    'EUR': 0.85,
-    'RUB': 75.0,
-    'GBP': 0.73,
-    'JPY': 110.0
-};
 
 const CURRENCY_SYMBOLS = {
     'USD': '$',
@@ -41,25 +33,6 @@ function initializeApp() {
     loadUserSettings();
 }
 
-// Currency conversion functions
-function convertCurrency(amountCents, fromCurrency = 'USD', toCurrency = null) {
-    if (!toCurrency) {
-        toCurrency = userSettings?.currency || 'USD';
-    }
-    
-    if (fromCurrency === toCurrency) {
-        return amountCents;
-    }
-    
-    const fromRate = CURRENCY_RATES[fromCurrency] || 1.0;
-    const toRate = CURRENCY_RATES[toCurrency] || 1.0;
-    
-    // Convert from USD to target currency
-    const amountInUSD = amountCents / fromRate;
-    const convertedAmount = amountInUSD * toRate;
-    
-    return Math.round(convertedAmount);
-}
 
 function formatCurrency(amountCents, currency = null) {
     if (!currency) {
@@ -75,7 +48,6 @@ function formatCurrency(amountCents, currency = null) {
 // Make functions globally available
 window.formatCurrency = formatCurrency;
 window.getCurrencySymbol = getCurrencySymbol;
-window.convertCurrency = convertCurrency;
 
 function getCurrencySymbol(currency = null) {
     if (!currency) {
